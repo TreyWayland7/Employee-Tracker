@@ -65,11 +65,20 @@ function promptUserForAction(){
             }
         }else if(answer.userAction == 'Add Department'){
             const nameOfDepartmentToAdd = await promptUserForNameOfDepartment();
-            console.log(nameOfDepartmentToAdd);
             try {
                 const { rows } = await pool.query("INSERT INTO department (name) VALUES ($1);", [nameOfDepartmentToAdd]);
                 console.log("");
-                console.table(rows);
+                console.log(`New Department Created ${nameOfDepartmentToAdd}`);
+                console.log("");
+            } catch (err) {
+                console.error('Error executing query', err.stack);
+            }
+        }else if(answer.userAction == 'Add Role'){
+            const userRoleData = await promptUserForRole();
+            try {
+                const { rows } = await pool.query("INSERT INTO role (title, salary, department) VALUES ($1, $2, $3);", [userRoleData[0], userRoleData[1], userRoleData[2]]);
+                console.log("");
+                console.log(`New Role Created ${userRoleData[0]}`);
                 console.log("");
             } catch (err) {
                 console.error('Error executing query', err.stack);
@@ -88,7 +97,6 @@ function promptUserForAction(){
 }
 
 async function promptUserForNameOfDepartment(){
-    console.log("123");
     try{
         const {departmentName} = await inquirer.prompt([
             {
@@ -103,4 +111,46 @@ async function promptUserForNameOfDepartment(){
         console.log(error);
     };
 }
+async function promptUserForRole() {
+    try{
+
+        const { rows } = await pool.query("SELECT * FROM department");
+        const departmentNames = rows.map(item => item.name);
+      
+        const {roleName, roleSalary, roleDepartment} = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'roleName',
+                message: "What is the name of the role?"
+            },
+            {
+                type: 'input',
+                name: 'roleSalary',
+                message: "What is the salary of the role?"
+                
+            },
+            {
+                type: 'list',
+                name: 'roleDepartment',
+                message: "Which department does this role belong to?",
+                choices: departmentNames
+            }
+        ]);
+
+        let departmentID = "";
+        for (let i=0;i<rows.length; i++){
+            if (roleDepartment == rows[i].name){
+                departmentID = rows[i].id;
+                break;
+            }
+        }
+
+        const returnArray = [roleName, roleSalary, departmentID];
+        return returnArray;
+    }catch(error){
+        console.log(error);
+    }
+
+}
+
 promptUserForAction();
