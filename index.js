@@ -83,11 +83,33 @@ function promptUserForAction(){
             } catch (err) {
                 console.error('Error executing query', err.stack);
             }
+        }else if(answer.userAction == 'Add Employee'){
+            const userEmployeeData = await promptUserForEmployee();
+            console.log(userEmployeeData);
+            try {
+                const { rows } = await pool.query("INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4);", [userEmployeeData[0], userEmployeeData[1], userEmployeeData[2], userEmployeeData[3]]);
+                console.log("");
+                console.log(`New employee Created ${userEmployeeData[0]} ${userEmployeeData[1]}`);
+                console.log("");
+            } catch (err) {
+                console.error('Error executing query', err.stack);
+            }
+        }else if(answer.userAction == 'Update Employee Role'){
+            const userEmployeeData = await promptUserForUpdateEmployeeRole();
+            console.log(userEmployeeData);
+            try {
+                const { rows } = await pool.query("UPDATE employee SET first_name = $1, last_name = $2, role_id = $3, manager_id = $4 WHERE id = $5;", [userEmployeeData[1], userEmployeeData[2], userEmployeeData[3], userEmployeeData[4], userEmployeeData[0]]);
+                console.log("");
+                console.log(`Employee role updated ${userEmployeeData[1]} ${userEmployeeData[2]}`);
+                console.log("");
+            } catch (err) {
+                console.error('Error executing query', err.stack);
+            }
         }
-
-
         if(answer.userAction != 'Quit'){
             promptUserForAction();
+        }else{
+            process.exit(0);
         }
     })
     .catch(error => {
@@ -150,7 +172,122 @@ async function promptUserForRole() {
     }catch(error){
         console.log(error);
     }
-
 }
+
+
+
+async function promptUserForEmployee() {
+    try{
+        let { rows } = await pool.query("SELECT * FROM role");
+        const role_rows = rows;
+        const roles = rows.map(item => item.title);
+
+        ({ rows } = await pool.query("SELECT * FROM employee"));
+        const employee_rows = rows;
+        const managerNames = rows.map(item => (item.first_name + " " + item.last_name));
+
+        const {firstName, lastName, role, manager} = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'firstName',
+                message: "What is the first name?"
+            },
+            {
+                type: 'input',
+                name: 'lastName',
+                message: "What is the last name?"
+            },
+            {
+                type: 'list',
+                name: 'role',
+                message: "What is this employee's role?",
+                choices: roles
+            },
+            {
+                type: 'list',
+                name: 'manager',
+                message: "What is this employee's manager?",
+                choices: managerNames
+            }
+
+        ]);
+        
+        let managerID = "";
+        for (let i=0;i<employee_rows.length; i++){
+            if (manager == (employee_rows[i].first_name + " " + employee_rows[i].last_name)){
+                managerID = employee_rows[i].id;
+                break;
+            }
+        }
+
+        let roleID = "";
+        for (let i=0;i<role_rows.length; i++){
+            if (role == role_rows[i].title){
+                roleID = role_rows[i].id;
+                break;
+            }
+        }
+
+        const returnArray = [firstName, lastName, roleID, managerID];
+        return returnArray;
+    }catch(error){
+        console.log(error);
+    }
+}
+
+
+async function promptUserForUpdateEmployeeRole() {
+
+    let { rows } = await pool.query("SELECT * FROM role");
+    const role_rows = rows;
+    const roles = rows.map(item => item.title);
+
+    ({ rows } = await pool.query("SELECT * FROM employee"));
+    const user_rows = rows;
+    const userNames = rows.map(item => (item.first_name + " " + item.last_name));
+
+    const {userName, role} = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'userName',
+            message: "Which employee's role do you want to update?",
+            choices: userNames
+        },
+        {
+            type: 'list',
+            name: 'role',
+            message: "Which role do you want to assign?",
+            choices: roles
+        }
+    ]);
+
+    let roleID = "";
+    for (let i=0;i<role_rows.length; i++){
+        if (role == role_rows[i].title){
+            roleID = role_rows[i].id;
+            break;
+        }
+    }
+
+
+    let userID = "";
+    let firstName = "";
+    let lastName = "";
+    let managerID = "";
+    for (let i=0;i<user_rows.length; i++){
+        if (userName == (user_rows[i].first_name + " " + user_rows[i].last_name)){
+            userID = user_rows[i].id;
+            firstName = user_rows[i].first_name;
+            lastName = user_rows[i].last_name;
+            managerID = user_rows[i].manager_id;
+            break;
+        }
+    }
+
+    const returnArray = [userID, firstName, lastName, roleID, managerID]
+    return returnArray;
+}
+
+
 
 promptUserForAction();
